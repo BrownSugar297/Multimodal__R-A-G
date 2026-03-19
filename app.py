@@ -194,33 +194,12 @@ def process_pdf(file, progress_bar) -> List[str]:
     return all_chunks
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  STEP 5 — VECTOR DATABASE  (Chroma, local in-memory)
-#  ─────────────────────────────────────────────────────────────────────────
-#  Why in-memory (not persisted to disk)?
-#  This app is designed for user-uploaded PDFs that change every session.
-#  Persisting to disk only makes sense for a fixed knowledge base.
-#  In-memory + @st.cache_resource = fast within a session, clean between.
-#
-#  RAM optimization: raw chunks deleted immediately after Chroma is built.
-#  Chroma only needs the vectors — the original strings are redundant.
-# ════════════════════════════════════════════════════════════════════════════
-
 @st.cache_resource(show_spinner=False)
 def create_vector_db(file_hash: str, chunks: tuple):
     embeddings = GeminiEmbeddings()
     db = Chroma.from_texts(list(chunks), embeddings)
-    # chunks tuple is held by cache — but the local list is freed after this
     return db
 
-
-# ════════════════════════════════════════════════════════════════════════════
-#  STEP 6 — CHAT  (Groq)
-#  ─────────────────────────────────────────────────────────────────────────
-#  Groq runs Llama 3.3 70B on LPU chips — extremely fast responses.
-#  Free tier: ~14,400 requests/day — far more than enough.
-#  Model rotation: if one hits rate limit, silently tries next.
-# ════════════════════════════════════════════════════════════════════════════
 
 GROQ_MODELS = [
     "llama-3.3-70b-versatile",   # best quality, use first
@@ -273,10 +252,6 @@ def ask_groq(context: str, question: str) -> str:
     raise Exception("ALL_QUOTA_EXCEEDED")
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  STREAMLIT UI
-# ════════════════════════════════════════════════════════════════════════════
-
 st.set_page_config(page_title="PaperChat", page_icon="📄")
 st.title("📄 PaperChat")
 st.caption("Multimodal RAG  ·  Gemini (embeddings + vision)  ·  Groq (chat)")
@@ -285,13 +260,10 @@ uploaded_file = st.file_uploader("Upload your Research Paper (PDF)", type="pdf")
 
 if uploaded_file:
 
-    # MD5 hash of file bytes = unique ID for caching
-    # Same paper re-uploaded → instant load, zero API calls
     raw_bytes = uploaded_file.read()
     file_hash = hashlib.md5(raw_bytes).hexdigest()
     uploaded_file.seek(0)   # reset pointer so processors can read the file
 
-    # Only process if this is a NEW paper
     if (
         "docsearch" not in st.session_state
         or st.session_state.get("loaded_file") != file_hash
@@ -306,8 +278,6 @@ if uploaded_file:
         st.session_state.loaded_file = file_hash
         st.session_state.total_chunks = len(chunks)
 
-        # Free raw chunks from local scope — Chroma has everything it needs
-        del chunks
 
         progress_bar.empty()
         st.success(
@@ -317,7 +287,6 @@ if uploaded_file:
 
     docsearch = st.session_state.docsearch
 
-    # Render previous chat messages
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
@@ -338,7 +307,6 @@ if uploaded_file:
                 docs = retriever.invoke(question)
                 context = "\n\n".join(d.page_content for d in docs)
 
-                # Generate answer using Groq
                 answer = ask_groq(context, question)
 
                 with st.chat_message("assistant"):
