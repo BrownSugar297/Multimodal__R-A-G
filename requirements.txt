@@ -1,0 +1,11 @@
+streamlit
+pymupdf
+pdfplumber
+groq
+google-genai
+langchain
+langchain-community
+langchain-core
+langchain-text-splitters
+chromadb
+python-dotenv
