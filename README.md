@@ -80,7 +80,6 @@ Open `http://localhost:8501` in your browser.
 4. Re-uploading the same paper skips reprocessing entirely (MD5-based cache).
 
 ---
-
 ## How Each Part Works
 
 **Text extraction (PyMuPDF)** — Pulls raw text from each page locally. Fast, free, no API.
