@@ -155,7 +155,6 @@ def process_pdf(file, progress_bar) -> List[str]:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_pages = len(doc)
 
-    # Extract all tables in one free local pass before the main loop
     tables_by_page = extract_tables_from_pdf(pdf_bytes)
 
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
@@ -165,12 +164,12 @@ def process_pdf(file, progress_bar) -> List[str]:
     for page_num in range(total_pages):
         page = doc[page_num]
 
-        # 1. Plain text
+        
         page_text = page.get_text("text") or ""
         if page_text.strip():
             all_chunks.extend(text_splitter.split_text(page_text))
 
-        # 2. Tables (already extracted, just append)
+        
         if page_num in tables_by_page:
             all_chunks.append(tables_by_page[page_num])
 
