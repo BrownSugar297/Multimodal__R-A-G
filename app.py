@@ -30,7 +30,7 @@ class GeminiEmbeddings(Embeddings):
         self.model = "models/gemini-embedding-001"
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        # Called once during indexing — embeds all chunks together
+        
         result = gemini_client.models.embed_content(
             model=self.model,
             contents=texts
@@ -38,7 +38,7 @@ class GeminiEmbeddings(Embeddings):
         return [e.values for e in result.embeddings]
 
     def embed_query(self, text: str) -> List[float]:
-        # Called on every user question to find matching chunks
+        
         result = gemini_client.models.embed_content(
             model=self.model,
             contents=[text]
@@ -180,8 +180,7 @@ def process_pdf(file, progress_bar) -> List[str]:
             if desc:
                 all_chunks.append(desc)
                 vision_calls += 1
-                # Small delay to stay within Gemini free tier rate limits
-                # (15 RPM free — 1 second gap keeps us well within limits)
+              
                 time.sleep(1)
 
         progress_bar.progress(
@@ -201,9 +200,9 @@ def create_vector_db(file_hash: str, chunks: tuple):
 
 
 GROQ_MODELS = [
-    "llama-3.3-70b-versatile",   # best quality, use first
-    "llama-3.1-8b-instant",      # fastest, first fallback
-    "mixtral-8x7b-32768",        # long context, last fallback
+    "llama-3.3-70b-versatile",   
+    "llama-3.1-8b-instant",     
+    "mixtral-8x7b-32768",        
 ]
 
 SYSTEM_PROMPT = """You are an expert research paper assistant.
@@ -234,8 +233,8 @@ def ask_groq(context: str, question: str) -> str:
             resp = groq_client.chat.completions.create(
                 model=model,
                 messages=messages,
-                max_tokens=512,    # concise answers
-                temperature=0.2,   # low = factual, high = creative
+                max_tokens=512,   
+                temperature=0.2,  
             )
             return resp.choices[0].message.content
 
@@ -243,7 +242,7 @@ def ask_groq(context: str, question: str) -> str:
             msg = str(e).lower()
             is_rate_limit = "429" in msg or "rate_limit" in msg
             if is_rate_limit and i < len(GROQ_MODELS) - 1:
-                continue   # try next model silently
+                continue  
             if i == len(GROQ_MODELS) - 1:
                 raise Exception("ALL_QUOTA_EXCEEDED")
             raise e
@@ -261,13 +260,13 @@ if uploaded_file:
 
     raw_bytes = uploaded_file.read()
     file_hash = hashlib.md5(raw_bytes).hexdigest()
-    uploaded_file.seek(0)   # reset pointer so processors can read the file
+    uploaded_file.seek(0)  
 
     if (
         "docsearch" not in st.session_state
         or st.session_state.get("loaded_file") != file_hash
     ):
-        st.session_state.chat_history = []   # clear chat for new paper
+        st.session_state.chat_history = []   
 
         progress_bar = st.progress(0, text="📖 Starting multimodal processing…")
         chunks = process_pdf(uploaded_file, progress_bar)
@@ -301,7 +300,7 @@ if uploaded_file:
 
         with st.spinner("Thinking…"):
             try:
-                # Retrieve top 5 most relevant chunks from vector DB
+              
                 retriever = docsearch.as_retriever(search_kwargs={"k": 5})
                 docs = retriever.invoke(question)
                 context = "\n\n".join(d.page_content for d in docs)
